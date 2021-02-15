@@ -18,3 +18,6 @@ I want an application that can handle:
 1. V0 - MVP locally managed DB (django?) with logic in Python script
 1. V1 - Add API connection w/phone app Google Keep
 1. V2 - Create React Web App and generalize to include users w/authentication
+
+## Helpful links:
+- https://github.com/kiwiz/gkeepapi
