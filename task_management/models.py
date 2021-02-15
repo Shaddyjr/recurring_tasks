@@ -1,18 +1,22 @@
 from django.db import models
 
 # Create your models here.
+
+class TaskPeriod(models.Model):
+    # 1|daily|Every day|0 8 * * *
+    # 2|weekly|Every week|0 0 * * 0
+    # 3|monthly|Every month|0 0 1 * *
+    # 4|quarter|Every quarter|0 0 1 */3 *
+    # 5|yearly|Every year|0 0 1 1 *
+    period=models.CharField(blank=True, null=True, max_length=16)
+    note=models.CharField(blank=True, null=True, max_length=255)
+    cron_string=models.CharField(blank=False, null=False, max_length=32)
+
 class Task(models.Model):
     class TaskTerm(models.IntegerChoices):
         short = 1
         medium = 2
         long = 3
-    
-    class TaskPeriod(models.TextChoices):
-        daily = 'daily', 'Daily'
-        weekly = 'weekly', 'Weekly'
-        monthly = 'monthly', 'Monthly'
-        quarterly = 'quarterly', 'Quarterly'
-        annually = 'annually', 'Annually'
 
     class TaskStatus(models.TextChoices):
         ideation = 'ideation', 'Ideation'
@@ -23,7 +27,12 @@ class Task(models.Model):
 
     title = models.CharField(blank=False, null=False, max_length=100)
     due_date = models.DateField()
-    notes = models.CharField(blank=True, null=True, max_length=255)
+    note = models.CharField(blank=True, null=True, max_length=255)
     term = models.IntegerField(blank=True, null=True, default=TaskTerm.short, choices=TaskTerm.choices)
-    recurring_period = models.CharField(blank=True, null=True, choices=TaskPeriod.choices, max_length=16)
+    recurring_period = models.ForeignKey(
+        TaskPeriod,
+        on_delete=models.CASCADE,
+        blank=False,
+        null=False
+    )
     status = models.CharField(blank=False, null=False, default=TaskStatus.ideation, choices=TaskStatus.choices, max_length=16)
