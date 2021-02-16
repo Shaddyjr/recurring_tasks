@@ -8,7 +8,7 @@ class TaskPeriod(models.Model):
     # 3|monthly|Every month|0 0 1 * *
     # 4|quarter|Every quarter|0 0 1 */3 *
     # 5|yearly|Every year|0 0 1 1 *
-    period=models.CharField(blank=True, null=True, max_length=16)
+    period=models.CharField(max_length=16, primary_key=True)
     note=models.CharField(blank=True, null=True, max_length=255)
     cron_string=models.CharField(blank=False, null=False, max_length=32)
 
@@ -22,7 +22,7 @@ class Task(models.Model):
         ideation = 'ideation', 'Ideation'
         in_progress = 'in_progress', 'In Progress'
         done = 'done', 'Done'
-        stuck = 'stuck', 'Stuck'
+        blocked = 'blocked', 'Blocked'
         recurring = 'recurring', 'Recurring'
 
     title = models.CharField(blank=False, null=False, max_length=100)
@@ -32,7 +32,7 @@ class Task(models.Model):
     recurring_period = models.ForeignKey(
         TaskPeriod,
         on_delete=models.CASCADE,
-        blank=False,
-        null=False
+        blank=True,
+        null=True
     )
     status = models.CharField(blank=False, null=False, default=TaskStatus.ideation, choices=TaskStatus.choices, max_length=16)
