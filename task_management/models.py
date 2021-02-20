@@ -31,7 +31,7 @@ class Task(models.Model):
     term = models.IntegerField(blank=True, null=True, default=TaskTerm.short, choices=TaskTerm.choices)
     recurring_period = models.ForeignKey(
         TaskPeriod,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         blank=True,
         null=True
     )
