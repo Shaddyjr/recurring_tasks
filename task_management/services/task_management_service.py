@@ -12,7 +12,7 @@ class TaskManagementService():
             due_date = due_date,
             note = note,
             term = term,
-            recurring_period = self.get_task_period(period),
+            recurring_period = self._get_task_period(period),
         )
 
     def get_task(self, task_id):
@@ -28,16 +28,17 @@ class TaskManagementService():
             "note",
             "term",
             "period",
-            "status",   
+            "status",
         ]
 
         task = self.get_task(task_id)
         keys = kwargs.keys()
         for task_field in task_fields:
             if task_field in keys:
-                setattr(task, task_field, kwargs.get(task_fields))
-    
-    def get_task_period(self, period):
+                setattr(task, task_field, kwargs.get(task_field))
+        task.save()
+
+    def _get_task_period(self, period):
         if period:
             return TaskPeriod.objects.get(period=period)
 
@@ -45,7 +46,7 @@ class TaskManagementService():
         task = self.get_task(task_id)
         # Recurring tasks don't truly ever complete
         if task.recurring_period is not None:
-            self._get_new_due_date_for_recurring(task)
+            self._set_new_due_date_for_recurring(task)
         else:
             self.update_task(
                 task_id = task.id,
@@ -61,13 +62,8 @@ class TaskManagementService():
         today = datetime.now().date()
         return Task.objects.filter(due_date = today)
     
-    def get_live_tasks_by_term(self, term):
-        '''
-        Parameters:
-            `term` (int): 1 => short, 2 => medium, 3 => long
-        '''
-        return Task.objects.exclude(status = Task.TaskStatus.done).filter(term = term)
-        
+    def get_live_tasks(self):
+        return Task.objects.exclude(status = Task.TaskStatus.done)
 
-    def get_tasks_by_status(self, status):
-        return Task.objects.filter(status = status)
+    def get_done_tasks(self):
+        return Task.objects.filter(status = Task.TaskStatus.done)

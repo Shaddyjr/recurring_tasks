@@ -6,7 +6,7 @@ class TaskPeriod(models.Model):
     # 1|daily|Every day|0 8 * * *
     # 2|weekly|Every week|0 0 * * 0
     # 3|monthly|Every month|0 0 1 * *
-    # 4|quarter|Every quarter|0 0 1 */3 *
+    # 4|quarterly|Every quarter|0 0 1 */3 *
     # 5|yearly|Every year|0 0 1 1 *
     period=models.CharField(max_length=16, primary_key=True)
     note=models.CharField(blank=True, null=True, max_length=255)

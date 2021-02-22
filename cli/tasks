@@ -1,0 +1,168 @@
+#!winpty /c/Python39/python
+
+from pyfiglet import Figlet
+from PyInquirer import style_from_dict, Token, prompt, Separator
+from pprint import pprint
+import os 
+import sys
+
+# This is so Django knows where to find stuff.
+# This is so my local_settings.py gets loaded.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "recurringTasks.settings")
+# putting everything in django context
+import django
+django.setup() 
+
+from task_management.apis.base import TaskManagementAPI
+
+tm_api = TaskManagementAPI()
+
+# Logo
+f = Figlet(font='big')
+print (f.renderText('Recurring Tasks'))
+
+# Styles
+style = style_from_dict({
+    Token.Separator: '#cc5454',
+    Token.QuestionMark: '#673ab7 bold',
+    Token.Selected: '#cc5454',  # default
+    Token.Pointer: '#673ab7 bold',
+    Token.Instruction: '',  # default
+    Token.Answer: '#f44336 bold',
+    Token.Question: '',
+})
+
+# CONFIG 
+TODAYS_TASKS  = "Get today's tasks"
+CREATE_TASK = "Create task"
+VIEW_LIVE_TASKS = "View live tasks"
+DELETE_TASK = "Delete task"
+VIEW_DONE_TASKS = "View done tasks"
+EXIT = 'Exit'
+
+MAIN_OPTIONS = [
+    TODAYS_TASKS,
+    CREATE_TASK,
+    VIEW_LIVE_TASKS,
+    DELETE_TASK,
+    VIEW_DONE_TASKS,
+    EXIT,
+]
+
+def _format_task_line(task, headers):
+    return '   '.join([str(task[header]) for header in headers ])
+
+
+def _format_task_obj(task):
+    '''
+    Task editable by line
+    '''
+    headers = [
+        "title",
+        "due_date",
+        "note",
+        "term",
+        "period",
+        "status",
+    ]
+
+
+def get_todays_tasks():
+    pass
+
+def create_task():
+    pass
+
+def view_live_tasks():
+    tasks = tm_api.get_live_tasks()
+    headers = [
+        "title",
+        "due_date",
+        "status",
+    ]
+
+    formatted_tasks = [_format_task_line(task, headers) for task in tasks] + [EXIT]
+    question = {
+            'type': 'rawlist',
+            'message': "LIVE TASKS:" + '   '.join(headers),
+            'name': 'selection',
+            'choices': formatted_tasks,
+        }
+
+    answer = prompt(question, style=style)
+    if answer['selection'] != EXIT:
+        index = formatted_tasks.index(answer['selection'])
+        update_task(tasks[index])
+
+def update_task(task_obj):
+    field_options = [
+        ("title",),
+        ("due_date",),
+        ("note",),
+        ("term",'short, medium, or long'),
+        ("period",'daily, weekly, monthly, quarterly, yearly'),
+        ("status", "ideation, in_progress, done, blocked, recurring (period must be set)"),
+    ]
+    
+    formatted_options = [f'{items[0]} ({items[1]}): {task_obj[items[0]]}' if len(items) > 1 else f'{items[0]}: {task_obj[items[0]]}' for items in field_options] + [EXIT]
+    question = {
+        'type': 'list',
+        'name': 'selection',
+        'message': 'Select a parameter to update',
+        'choices': formatted_options,
+    }
+
+    answer = prompt(question, style=style)
+
+    if answer['selection'] != EXIT:
+        index = formatted_options.index(answer['selection'])
+        field = field_options[index][0]
+        print(field, index)
+        temp_answer = prompt({
+            'type': 'input',
+            'name': 'val',
+            'message': f'Overwrite current value {task_obj[field]}:',
+        }, style=style)
+        task_obj[field] = temp_answer['val']
+        # TODO: Add validation for each field_option
+        update_task(task_obj)
+    
+    # TODO: improve logic to only update when needed and only for altered fields
+    tm_api.update_task(task_obj['id'], **task_obj)
+
+
+def delete_task():
+    pass 
+
+def view_done_tasks():
+    pass 
+
+
+def handle_menu_answer(answer):
+    handle_functions = {
+        TODAYS_TASKS: get_todays_tasks,
+        CREATE_TASK: create_task,
+        VIEW_LIVE_TASKS: view_live_tasks,
+        DELETE_TASK: delete_task,
+        VIEW_DONE_TASKS: view_done_tasks,
+    }
+
+    handle_functions[answer]()
+
+def main_menu():
+    question = {
+            'type': 'list',
+            'message': 'Select:',
+            'name': 'menu_selection',
+            'choices': MAIN_OPTIONS,
+        }
+
+    answer = prompt(question, style=style)
+
+    if answer['menu_selection'] != EXIT:
+        handle_menu_answer(answer['menu_selection'])
+        main_menu()
+
+
+if __name__ == "__main__":
+    main_menu()
