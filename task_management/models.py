@@ -1,7 +1,8 @@
 from django.db import models
-
+from task_management.utils import TaskTerm, TaskStatus
 # Create your models here.
 
+# TODO: set up automatic migration with these data inserted
 class TaskPeriod(models.Model):
     # 1|daily|Every day|0 8 * * *
     # 2|weekly|Every week|0 0 * * 0
@@ -13,18 +14,6 @@ class TaskPeriod(models.Model):
     cron_string=models.CharField(blank=False, null=False, max_length=32)
 
 class Task(models.Model):
-    class TaskTerm(models.IntegerChoices):
-        short = 1
-        medium = 2
-        long = 3
-
-    class TaskStatus(models.TextChoices):
-        ideation = 'ideation', 'Ideation'
-        in_progress = 'in_progress', 'In Progress'
-        done = 'done', 'Done'
-        blocked = 'blocked', 'Blocked'
-        recurring = 'recurring', 'Recurring'
-
     title = models.CharField(blank=False, null=False, max_length=100)
     due_date = models.DateField()
     note = models.CharField(blank=True, null=True, max_length=255)
@@ -36,3 +25,7 @@ class Task(models.Model):
         null=True
     )
     status = models.CharField(blank=False, null=False, default=TaskStatus.ideation, choices=TaskStatus.choices, max_length=16)
+
+    @property
+    def is_recurring(self):
+        return self.recurring_period is not None

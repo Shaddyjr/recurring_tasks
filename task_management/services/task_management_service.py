@@ -1,18 +1,38 @@
-from task_management.models import Task, TaskPeriod
+from task_management.models import Task, TaskPeriod, TaskTerm, TaskStatus
 from datetime import datetime
 from croniter import croniter
 
 class TaskManagementService():
     def __init__(self):
-        pass
+        self.process_tasks()
 
-    def create_task(self, title, due_date, note=None, term=None, period=None):
+    def process_tasks(self):
+        """
+        Syncs tasks to the moment the service is invoked (not using a cron job or server to upkeep).
+        """
+        today = datetime.now().date()
+        past_due_tasks = Task.objects.exclude(status__in = [TaskStatus.done, TaskStatus.blocked]).filter(due_date__lt=today)
+
+        for task in past_due_tasks:
+            # recurring set to next due date
+            if task.is_recurring:
+                self._set_new_due_date_for_recurring(task)
+            # past due assigned status = "blocked"
+            else:
+                self.update_task(
+                    task_id = task.id,
+                    status = Task.TaskStatus.done
+                )
+
+
+    def create_task(self, title, due_date, note=None, term=None, period=None, status=None):
         Task.objects.create(
             title = title,
             due_date = due_date,
             note = note,
             term = term,
             recurring_period = self._get_task_period(period),
+            status = status,
         )
 
     def get_task(self, task_id):
@@ -45,7 +65,7 @@ class TaskManagementService():
     def complete_task(self, task_id):
         task = self.get_task(task_id)
         # Recurring tasks don't truly ever complete
-        if task.recurring_period is not None:
+        if task.is_recurring:
             self._set_new_due_date_for_recurring(task)
         else:
             self.update_task(
@@ -57,13 +77,14 @@ class TaskManagementService():
         cron = croniter(task.recurring_period.cron_string)
         next_due_date = cron.get_next(datetime).date()
         task.due_date = next_due_date
+        task.save()
 
     def get_tasks_for_today(self):
         today = datetime.now().date()
         return Task.objects.filter(due_date = today)
     
     def get_live_tasks(self):
-        return Task.objects.exclude(status = Task.TaskStatus.done)
+        return Task.objects.exclude(status = TaskStatus.done)
 
     def get_done_tasks(self):
-        return Task.objects.filter(status = Task.TaskStatus.done)
+        return Task.objects.filter(status = TaskStatus.done)

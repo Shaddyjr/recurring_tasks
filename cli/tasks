@@ -11,10 +11,10 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "recurringTasks.settings")
 # putting everything in django context
 import django
-django.setup() 
+django.setup()
 
 from task_management.apis.base import TaskManagementAPI
-
+from task_management.utils import TaskTerm, TaskStatus, TaskPeriodTypes
 tm_api = TaskManagementAPI()
 
 # Logo
@@ -36,18 +36,24 @@ style = style_from_dict({
 TODAYS_TASKS  = "Get today's tasks"
 CREATE_TASK = "Create task"
 VIEW_LIVE_TASKS = "View live tasks"
-DELETE_TASK = "Delete task"
 VIEW_DONE_TASKS = "View done tasks"
+DELETE_TASK = "Delete task"
 EXIT = 'Exit'
 
 MAIN_OPTIONS = [
     TODAYS_TASKS,
     CREATE_TASK,
     VIEW_LIVE_TASKS,
-    DELETE_TASK,
     VIEW_DONE_TASKS,
     EXIT,
 ]
+
+SINGLE_LINE_TASK_HEADERS = [
+    "title",
+    "due_date",
+    "status",
+]
+
 
 def _format_task_line(task, headers):
     return '   '.join([str(task[header]) for header in headers ])
@@ -68,18 +74,59 @@ def _format_task_obj(task):
 
 
 def get_todays_tasks():
-    pass
+    tasks = tm_api.get_tasks_for_today()
+    headers = SINGLE_LINE_TASK_HEADERS
+
+    formatted_tasks = [_format_task_line(task, headers) for task in tasks] + [EXIT]
+    question = {
+            'type': 'rawlist',
+            'message': "LIVE TASKS:" + '   '.join(headers),
+            'name': 'selection',
+            'choices': formatted_tasks,
+        }
+
+    answer = prompt(question, style=style)
+    if answer['selection'] != EXIT:
+        index = formatted_tasks.index(answer['selection'])
+        update_task(tasks[index])
+
 
 def create_task():
-    pass
+    NONE = 'None'
+    field_options = [
+        ("title","Title", None),
+        ("due_date","Due Date (YYYY-MM-DD)", None), # TODO: provide alt option for date format
+        ("note","Note (OPTIONAL)", None),
+        ("term","Term (OPTIONAL)", [NONE] + list(TaskTerm.labels)),
+        ("period","Period (OPTIONAL)", [NONE] + list(TaskPeriodTypes.labels)),
+        ("status","Status", list(TaskStatus.labels)),
+    ]
+
+    questions = []
+    for field, message, options in field_options:
+        if options:
+            question = {
+                'type': 'list',
+                'name': field,
+                'message': f'Select one of the following for {message}:',
+                'choices': options,
+            }
+        else:
+            question = {
+                'type': 'input',
+                'name': field,
+                'message': f'Set {message}:',
+            }
+        questions.append(question)
+
+    answers = prompt(questions, style=style)
+
+    task_obj = {field:answers[field] for field, _, _ in field_options if answers[field] != NONE}
+    tm_api.create_task(**task_obj)
 
 def view_live_tasks():
     tasks = tm_api.get_live_tasks()
-    headers = [
-        "title",
-        "due_date",
-        "status",
-    ]
+    headers = SINGLE_LINE_TASK_HEADERS
 
     formatted_tasks = [_format_task_line(task, headers) for task in tasks] + [EXIT]
     question = {
@@ -95,47 +142,92 @@ def view_live_tasks():
         update_task(tasks[index])
 
 def update_task(task_obj):
-    field_options = [
-        ("title",),
-        ("due_date",),
-        ("note",),
-        ("term",'short, medium, or long'),
-        ("period",'daily, weekly, monthly, quarterly, yearly'),
-        ("status", "ideation, in_progress, done, blocked, recurring (period must be set)"),
-    ]
-    
-    formatted_options = [f'{items[0]} ({items[1]}): {task_obj[items[0]]}' if len(items) > 1 else f'{items[0]}: {task_obj[items[0]]}' for items in field_options] + [EXIT]
+    field_options = {
+        "title": None,
+        "due_date": None,
+        "note": None,
+        "term": TaskTerm.labels,
+        "period": TaskPeriodTypes.labels,
+        "status": TaskStatus.labels,
+        DELETE_TASK: None,
+        EXIT: None,
+    }
+
     question = {
         'type': 'list',
         'name': 'selection',
         'message': 'Select a parameter to update',
-        'choices': formatted_options,
+        'choices': formatted_options.keys()
     }
 
-    answer = prompt(question, style=style)
+    # TODO: Add validation for each field_option
+    answer = prompt(question, style=style)['selection']
 
-    if answer['selection'] != EXIT:
-        index = formatted_options.index(answer['selection'])
-        field = field_options[index][0]
-        print(field, index)
-        temp_answer = prompt({
-            'type': 'input',
-            'name': 'val',
-            'message': f'Overwrite current value {task_obj[field]}:',
-        }, style=style)
-        task_obj[field] = temp_answer['val']
-        # TODO: Add validation for each field_option
-        update_task(task_obj)
-    
-    # TODO: improve logic to only update when needed and only for altered fields
-    tm_api.update_task(task_obj['id'], **task_obj)
+    if field == DELETE_TASK:
+        delete_task(task_obj['id'])
+    else:
+        if field != EXIT:
+            if field_options.get(field):
+                data = select_from_following(field_options.get(field))
+            else:
+                data = get_new_value(task_obj[field])
+            task_obj[field] = data
+            update_task(task_obj)
 
+        tm_api.update_task(task_obj['id'], **task_obj)
 
-def delete_task():
-    pass 
+def get_new_value(old_value):
+    question = {
+        'type': 'input',
+        'name': 'user_input',
+        'message': f'Overwrite current value {old_value}:',
+    }
+    return prompt(question, style=style)['user_input']
+
+def select_from_following(options):
+    question = {
+        'type': 'list',
+        'name': 'selection',
+        'message': 'Select one of the following:',
+        'choices': options + [EXIT],
+    }
+
+    answer = prompt(question, style=style)['selection']
+    if answer != EXIT:
+        return answer
+    return None
+
+def delete_task(task_id):
+    if get_confirmation():
+        tm_api.delete_task(task_id)
+
+def get_confirmation():
+    question = {
+        'type': 'confirm',
+        'message': "Are you sure?",
+        'name': 'response',
+    }
+
+    return prompt(question, style=style)['response']
+
 
 def view_done_tasks():
-    pass 
+    tasks = tm_api.get_done_tasks()
+    headers = SINGLE_LINE_TASK_HEADERS
+
+    formatted_tasks = [_format_task_line(task, headers) for task in tasks] + [EXIT]
+    question = {
+            'type': 'rawlist',
+            'message': "LIVE TASKS:" + '   '.join(headers),
+            'name': 'selection',
+            'choices': formatted_tasks,
+        }
+
+    answer = prompt(question, style=style)
+    if answer['selection'] != EXIT:
+        index = formatted_tasks.index(answer['selection'])
+        update_task(tasks[index])
+
 
 
 def handle_menu_answer(answer):
@@ -143,7 +235,6 @@ def handle_menu_answer(answer):
         TODAYS_TASKS: get_todays_tasks,
         CREATE_TASK: create_task,
         VIEW_LIVE_TASKS: view_live_tasks,
-        DELETE_TASK: delete_task,
         VIEW_DONE_TASKS: view_done_tasks,
     }
 

@@ -16,8 +16,8 @@ class TaskManagementAPI():
         if task_period:
             return task_period.period
 
-    def create_task(self, title, due_date, note=None, term=None, period=None):
-        TaskManagementService().create_task(title, due_date, note=None, term=None, period=None)
+    def create_task(self, title, due_date, note=None, term=None, period=None, status=None):
+        TaskManagementService().create_task(title, due_date, note=note, term=term, period=period, status=status)
     
     def get_task(self, task_id):
         task = TaskManagementService().get_task(task_id)
@@ -41,6 +41,6 @@ class TaskManagementAPI():
         return [self._format_task_output(task) for task in tasks]
 
     def get_done_tasks(self):
-        tasks = TaskManagementService().get_done_tasks(term)
+        tasks = TaskManagementService().get_done_tasks()
         return [self._format_task_output(task) for task in tasks]
     
