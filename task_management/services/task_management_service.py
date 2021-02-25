@@ -1,6 +1,7 @@
+import datetime
 from task_management.models import Task, TaskPeriod, TaskTerm, TaskStatus
-from datetime import datetime
 from croniter import croniter
+from dateutil.parser import parse
 
 class TaskManagementService():
     def __init__(self):
@@ -10,7 +11,7 @@ class TaskManagementService():
         """
         Syncs tasks to the moment the service is invoked (not using a cron job or server to upkeep).
         """
-        today = datetime.now().date()
+        today = datetime.datetime.now().date()
         past_due_tasks = Task.objects.exclude(status__in = [TaskStatus.done, TaskStatus.blocked]).filter(due_date__lt=today)
 
         for task in past_due_tasks:
@@ -21,16 +22,19 @@ class TaskManagementService():
             else:
                 self.update_task(
                     task_id = task.id,
-                    status = Task.TaskStatus.done
+                    status = TaskStatus.done
                 )
-
+    def parse_date(self, date):
+        if isinstance(date, datetime.date):
+            return date
+        return parse(date).date()
 
     def create_task(self, title, due_date, note=None, term=None, period=None, status=None):
         Task.objects.create(
             title = title,
-            due_date = due_date,
+            due_date = self.parse_date(due_date),
             note = note,
-            term = term,
+            term = self._get_task_term(term),
             recurring_period = self._get_task_period(period),
             status = status,
         )
@@ -58,6 +62,10 @@ class TaskManagementService():
                 setattr(task, task_field, kwargs.get(task_field))
         task.save()
 
+    def _get_task_term(self, term):
+        if term:
+            return getattr(TaskTerm, term.lower())
+
     def _get_task_period(self, period):
         if period:
             return TaskPeriod.objects.get(period=period)
@@ -75,12 +83,12 @@ class TaskManagementService():
 
     def _set_new_due_date_for_recurring(self, task):
         cron = croniter(task.recurring_period.cron_string)
-        next_due_date = cron.get_next(datetime).date()
+        next_due_date = cron.get_next(datetime.datetime).date()
         task.due_date = next_due_date
         task.save()
 
     def get_tasks_for_today(self):
-        today = datetime.now().date()
+        today = datetime.datetime.now().date()
         return Task.objects.filter(due_date = today)
     
     def get_live_tasks(self):

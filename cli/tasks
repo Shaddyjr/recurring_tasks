@@ -6,9 +6,9 @@ from pprint import pprint
 import os 
 import sys
 
-# This is so Django knows where to find stuff.
 # This is so my local_settings.py gets loaded.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "recurringTasks.settings")
+
 # putting everything in django context
 import django
 django.setup()
@@ -95,7 +95,7 @@ def create_task():
     NONE = 'None'
     field_options = [
         ("title","Title", None),
-        ("due_date","Due Date (YYYY-MM-DD)", None), # TODO: provide alt option for date format
+        ("due_date","Due Date", None),
         ("note","Note (OPTIONAL)", None),
         ("term","Term (OPTIONAL)", [NONE] + list(TaskTerm.labels)),
         ("period","Period (OPTIONAL)", [NONE] + list(TaskPeriodTypes.labels)),
