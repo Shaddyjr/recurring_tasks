@@ -18,11 +18,11 @@ class TaskManagementService():
             # recurring set to next due date
             if task.is_recurring:
                 self._set_new_due_date_for_recurring(task)
-            # past due assigned status = "blocked"
+            # past due assigned status = "past_due"
             else:
                 self.update_task(
                     task_id = task.id,
-                    status = TaskStatus.done
+                    status = TaskStatus.past_due
                 )
     def parse_date(self, date):
         if isinstance(date, datetime.date):
@@ -78,7 +78,7 @@ class TaskManagementService():
         else:
             self.update_task(
                 task_id = task.id,
-                status = Task.TaskStatus.done
+                status = TaskStatus.done
             )
 
     def _set_new_due_date_for_recurring(self, task):
@@ -96,3 +96,11 @@ class TaskManagementService():
 
     def get_done_tasks(self):
         return Task.objects.filter(status = TaskStatus.done)
+
+    # TODO
+    def get_overdue_tasks(self):
+        pass
+
+    # TODO
+    def get_tasks_for_date(self):
+        pass

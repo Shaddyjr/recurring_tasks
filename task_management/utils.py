@@ -11,6 +11,7 @@ class TaskStatus(models.TextChoices):
     done = 'done', 'Done'
     blocked = 'blocked', 'Blocked'
     recurring = 'recurring', 'Recurring'
+    past_due = 'past_due', 'Past Due'
 
 class TaskPeriodTypes(models.TextChoices):
     daily = '0 8 * * *'
