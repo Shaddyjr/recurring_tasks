@@ -95,6 +95,7 @@ def _select_from_following(options):
 
 # MAIL CLI FUNCTIONS
 def view_tasks(tasks):
+    # TODO: Add "complete task" function
     formatted_tasks = [_format_task_line(task, SINGLE_LINE_TASK_HEADERS) for task in tasks] + [EXIT]
     question = {
             'type': 'rawlist',
@@ -112,6 +113,7 @@ def get_todays_tasks():
     view_tasks(tm_api.get_tasks_for_today())
 
 def view_live_tasks():
+    # TODO: exit from live task should go back to live tasks, NOT MENU
     view_tasks(tm_api.get_live_tasks())
 
 def view_done_tasks():

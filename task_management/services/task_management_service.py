@@ -12,7 +12,7 @@ class TaskManagementService():
         Syncs tasks to the moment the service is invoked (not using a cron job or server to upkeep).
         """
         today = datetime.datetime.now().date()
-        past_due_tasks = Task.objects.exclude(status__in = [TaskStatus.done, TaskStatus.blocked]).filter(due_date__lt=today)
+        past_due_tasks = self.get_live_tasks().filter(due_date__lt=today)
 
         for task in past_due_tasks:
             # recurring set to next due date
@@ -36,7 +36,7 @@ class TaskManagementService():
             note = note,
             term = self._get_task_term(term),
             recurring_period = self._get_task_period(period),
-            status = status,
+            status = self._get_task_status(status),
         )
 
     def get_task(self, task_id):
@@ -47,28 +47,34 @@ class TaskManagementService():
     
     def update_task(self, task_id, **kwargs):
         task_fields = [
-            "title",
-            "due_date",
-            "note",
-            "term",
-            "period",
-            "status",
+            ("title", None),
+            ("due_date", self.parse_date),
+            ("note", None),
+            ("term", self._get_task_term),
+            ("period", self._get_task_period),
+            ("status", self._get_task_status),
         ]
 
         task = self.get_task(task_id)
         keys = kwargs.keys()
-        for task_field in task_fields:
+        for task_field, func in task_fields:
             if task_field in keys:
-                setattr(task, task_field, kwargs.get(task_field))
+                val = kwargs.get(task_field)
+                if func:
+                    val = func(val)
+                setattr(task, task_field, val)
         task.save()
 
     def _get_task_term(self, term):
-        if term:
+        if term is not None:
             return getattr(TaskTerm, term.lower())
 
     def _get_task_period(self, period):
-        if period:
-            return TaskPeriod.objects.get(period=period)
+        if period is not None:
+            return TaskPeriod.objects.get(period=period.lower())
+
+    def _get_task_status(self, status):
+        return getattr(TaskStatus, status.lower())
 
     def complete_task(self, task_id):
         task = self.get_task(task_id)
@@ -84,15 +90,18 @@ class TaskManagementService():
     def _set_new_due_date_for_recurring(self, task):
         cron = croniter(task.recurring_period.cron_string)
         next_due_date = cron.get_next(datetime.datetime).date()
-        task.due_date = next_due_date
-        task.save()
+        self.update_task(
+            task_id = task.id,
+            due_date = next_due_date,
+            status = TaskStatus.ideation,
+        )
 
     def get_tasks_for_today(self):
         today = datetime.datetime.now().date()
-        return Task.objects.filter(due_date = today)
+        return self.get_live_tasks().filter(due_date = today)
     
     def get_live_tasks(self):
-        return Task.objects.exclude(status = TaskStatus.done)
+        return Task.objects.filter(status__in = [TaskStatus.ideation, TaskStatus.in_progress])
 
     def get_done_tasks(self):
         return Task.objects.filter(status = TaskStatus.done)

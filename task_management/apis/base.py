@@ -1,20 +1,27 @@
 from task_management.services.task_management_service import TaskManagementService
+from task_management.utils import TaskTerm
 
 class TaskManagementAPI():
+    TERM_MAPPING = {val:word.capitalize() for val, word in TaskTerm.choices}
+
     def _format_task_output(self, task):
         return {
             "id": task.id,
             "title": task.title,
             "due_date": task.due_date,
             "note": task.note,
-            "term": task.term,
+            "term": self._determine_term(task.term),
             "period": self._determine_period(task.recurring_period),
             "status": task.status,
         }
 
     def _determine_period(self, task_period):
-        if task_period:
+        if task_period is not None:
             return task_period.period
+
+    def _determine_term(self, task_term):
+        if task_term is not None:
+            return self.TERM_MAPPING[task_term]
 
     def create_task(self, title, due_date, note=None, term=None, period=None, status=None):
         TaskManagementService().create_task(title, due_date, note=note, term=term, period=period, status=status)
