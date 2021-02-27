@@ -37,6 +37,7 @@ TODAYS_TASKS  = "Get Today's Tasks"
 CREATE_TASK = "Create Task"
 VIEW_LIVE_TASKS = "View Live Tasks"
 VIEW_DONE_TASKS = "View Done Tasks"
+COMPLETE_TASK = "Complete Task"
 DELETE_TASK = "Delete Task"
 EXIT = 'Exit'
 
@@ -95,7 +96,7 @@ def _select_from_following(options):
 
 # MAIL CLI FUNCTIONS
 def view_tasks(tasks):
-    # TODO: Add "complete task" function
+    """Returns user's selection"""
     formatted_tasks = [_format_task_line(task, SINGLE_LINE_TASK_HEADERS) for task in tasks] + [EXIT]
     question = {
             'type': 'rawlist',
@@ -108,16 +109,19 @@ def view_tasks(tasks):
     if answer['selection'] != EXIT:
         index = formatted_tasks.index(answer['selection'])
         update_task(tasks[index])
+    return answer['selection']
 
 def get_todays_tasks():
-    view_tasks(tm_api.get_tasks_for_today())
+    while view_tasks(tm_api.get_tasks_for_today()) != EXIT:
+        continue
 
 def view_live_tasks():
-    # TODO: exit from live task should go back to live tasks, NOT MENU
-    view_tasks(tm_api.get_live_tasks())
+    while view_tasks(tm_api.get_live_tasks()) != EXIT:
+        continue
 
 def view_done_tasks():
-    view_tasks(tm_api.get_done_tasks())
+    while view_tasks(tm_api.get_done_tasks()) != EXIT:
+        continue
 
 def create_task():
     NONE = 'None'
@@ -179,7 +183,7 @@ def update_task(task_obj):
         'type': 'list',
         'name': 'selection',
         'message': 'Select a parameter to update',
-        'choices': choices + [DELETE_TASK, EXIT]
+        'choices': choices + [Separator(), COMPLETE_TASK, DELETE_TASK, EXIT]
     }
 
     # TODO: Add validation for each field_option
@@ -187,6 +191,8 @@ def update_task(task_obj):
 
     if answer == DELETE_TASK:
         delete_task(task_obj['id'])
+    elif answer == COMPLETE_TASK:
+        complete_task(task_obj['id'])
     else:
         if answer != EXIT:
             field = answer['field']
@@ -200,10 +206,12 @@ def update_task(task_obj):
 
         tm_api.update_task(task_obj['id'], **task_obj)
 
+def complete_task(task_id):
+    tm_api.complete_task(task_id)
+
 def delete_task(task_id):
     if _get_confirmation():
         tm_api.delete_task(task_id)
-
 
 def handle_menu_answer(answer):
     handle_functions = {
@@ -228,7 +236,6 @@ def main_menu():
     if answer['menu_selection'] != EXIT:
         handle_menu_answer(answer['menu_selection'])
         main_menu()
-
 
 if __name__ == "__main__":
     main_menu()
