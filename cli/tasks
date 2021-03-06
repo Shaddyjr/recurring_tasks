@@ -14,7 +14,7 @@ import django
 django.setup()
 
 from task_management.apis.base import TaskManagementAPI
-from task_management.utils import TaskTerm, TaskStatus, TaskPeriodTypes
+from task_management.utils import TaskStatus, TaskPeriodTypes
 tm_api = TaskManagementAPI()
 
 # Logo
@@ -50,19 +50,16 @@ MAIN_OPTIONS = [
     EXIT,
 ]
 
-SINGLE_LINE_TASK_HEADERS = [
-    "title",
-    "due_date",
-    "status",
-]
-
 # HELPERS
 def _format_string_with_value(string, value):
     new_string = " ".join([_string.capitalize() for _string in string.split('_')])
     return f"{new_string}: {value}"
 
-def _format_task_line(task, headers):
-    return '   '.join([str(task[header]) for header in headers ])
+def _format_task_line(task):
+    return {
+        'name': task['title'],
+        'value': task,
+    }
 
 def _get_confirmation():
     question = {
@@ -73,12 +70,23 @@ def _get_confirmation():
 
     return prompt(question, style=style)['response']
 
-def _get_new_value(old_value):
-    question = {
-        'type': 'input',
-        'name': 'user_input',
-        'message': f'Overwrite current value {old_value}:',
-    }
+def _get_new_value(old_value, editor):
+    if editor:
+        question = {
+            'type': 'editor',
+            'name': 'user_input',
+            'message': f'Overwrite current value:',
+            'default': old_value,
+            'eargs': {
+                'editor':'vim',
+            }
+        }
+    else:
+        question = {
+            'type': 'input',
+            'name': 'user_input',
+            'message': f'Overwrite current value {old_value}:',
+        }
     return prompt(question, style=style)['user_input']
 
 def _select_from_following(options):
@@ -94,22 +102,29 @@ def _select_from_following(options):
         return answer
     return None
 
+def post_process(answer):
+    '''Cleans up answer for better formatting'''
+    if type(answer) == str:
+        return answer.strip()
+    return answer
+
 # MAIL CLI FUNCTIONS
+# TODO: add date validation & others
+
 def view_tasks(tasks):
     """Returns user's selection"""
-    formatted_tasks = [_format_task_line(task, SINGLE_LINE_TASK_HEADERS) for task in tasks] + [EXIT]
+    formatted_tasks = [_format_task_line(task) for task in tasks] + [Separator(),EXIT]
     question = {
-            'type': 'rawlist',
+            'type': 'list',
             'message': "TASKS:",
             'name': 'selection',
             'choices': formatted_tasks,
         }
 
-    answer = prompt(question, style=style)
-    if answer['selection'] != EXIT:
-        index = formatted_tasks.index(answer['selection'])
-        update_task(tasks[index])
-    return answer['selection']
+    answer = prompt(question, style=style)['selection']
+    if answer != EXIT:
+        update_task(answer)
+    return answer
 
 def get_todays_tasks():
     while view_tasks(tm_api.get_tasks_for_today()) != EXIT:
@@ -127,9 +142,8 @@ def create_task():
     NONE = 'None'
     field_options = [
         ("title","Title", None),
-        ("due_date","Due Date", None),
+        ("due_date","Due Date (Default today)", None),
         ("note","Note (OPTIONAL)", None),
-        ("term","Term (OPTIONAL)", [NONE] + list(TaskTerm.labels)),
         ("period","Period (OPTIONAL)", [NONE] + list(TaskPeriodTypes.labels)),
         ("status","Status", list(TaskStatus.labels)),
     ]
@@ -149,11 +163,16 @@ def create_task():
                 'name': field,
                 'message': f'Set {message}:',
             }
+            if field == 'note':
+                question['type'] = 'editor'
+                question['eargs'] = {
+                    'editor':'vim',
+                }
         questions.append(question)
 
     answers = prompt(questions, style=style)
 
-    task_obj = {field:answers[field] for field, _, _ in field_options if answers[field] != NONE}
+    task_obj = {field:post_process(answers[field]) for field, _, _ in field_options if answers[field] != NONE}
     tm_api.create_task(**task_obj)
 
 
@@ -162,7 +181,6 @@ def update_task(task_obj):
         "title": None,
         "due_date": None,
         "note": None,
-        "term": TaskTerm.labels,
         "period": TaskPeriodTypes.labels,
         "status": TaskStatus.labels,
     }
@@ -200,8 +218,8 @@ def update_task(task_obj):
             if value:
                 data = _select_from_following(value)
             else:
-                data = _get_new_value(task_obj[field])
-            task_obj[field] = data
+                data = _get_new_value(task_obj[field], editor = field == 'note')
+            task_obj[field] = post_process(data)
             update_task(task_obj)
 
         tm_api.update_task(task_obj['id'], **task_obj)

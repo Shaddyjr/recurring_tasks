@@ -1,10 +1,5 @@
 from django.db import models
 
-class TaskTerm(models.IntegerChoices):
-    short = 1
-    medium = 2
-    long = 3
-
 class TaskStatus(models.TextChoices):
     ideation = 'ideation', 'Ideation'
     in_progress = 'in_progress', 'In Progress'

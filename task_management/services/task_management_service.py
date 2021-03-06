@@ -1,5 +1,5 @@
 import datetime
-from task_management.models import Task, TaskPeriod, TaskTerm, TaskStatus
+from task_management.models import Task, TaskPeriod, TaskStatus
 from croniter import croniter
 from dateutil.parser import parse
 
@@ -24,17 +24,19 @@ class TaskManagementService():
                     task_id = task.id,
                     status = TaskStatus.past_due
                 )
+
     def parse_date(self, date):
+        if not date:
+            return  datetime.datetime.now().date()
         if isinstance(date, datetime.date):
             return date
         return parse(date).date()
 
-    def create_task(self, title, due_date, note=None, term=None, period=None, status=None):
+    def create_task(self, title, due_date, note=None, period=None, status=None):
         Task.objects.create(
             title = title,
             due_date = self.parse_date(due_date),
             note = note,
-            term = self._get_task_term(term),
             recurring_period = self._get_task_period(period),
             status = self._get_task_status(status),
         )
@@ -50,7 +52,6 @@ class TaskManagementService():
             ("title", None),
             ("due_date", self.parse_date),
             ("note", None),
-            ("term", self._get_task_term),
             ("period", self._get_task_period),
             ("status", self._get_task_status),
         ]
@@ -64,10 +65,6 @@ class TaskManagementService():
                     val = func(val)
                 setattr(task, task_field, val)
         task.save()
-
-    def _get_task_term(self, term):
-        if term is not None:
-            return getattr(TaskTerm, term.lower())
 
     def _get_task_period(self, period):
         if period is not None:

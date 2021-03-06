@@ -1,5 +1,5 @@
 from django.db import models
-from task_management.utils import TaskTerm, TaskStatus
+from task_management.utils import TaskStatus
 # Create your models here.
 
 class TaskPeriod(models.Model):
@@ -10,7 +10,6 @@ class Task(models.Model):
     title = models.CharField(blank=False, null=False, max_length=100)
     due_date = models.DateField()
     note = models.CharField(blank=True, null=True, max_length=255)
-    term = models.IntegerField(blank=True, null=True, default=TaskTerm.short, choices=TaskTerm.choices)
     recurring_period = models.ForeignKey(
         TaskPeriod,
         on_delete=models.SET_NULL,

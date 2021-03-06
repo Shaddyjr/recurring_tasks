@@ -8,7 +8,7 @@
 I want an application that can handle:
 1. Task Management
     1. Recurring and one-off tasks
-    1. Long, medium, and long term tasks
+    1. ~Long, medium, and long term tasks~
     1. Maintain separate “domains”
 1. Record keeping
     1. Record completed tasks
