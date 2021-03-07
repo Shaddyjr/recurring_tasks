@@ -1,12 +1,13 @@
 from django.db import models
 from task_management.utils import TaskStatus
+from model_helpers import TimeStampMixin
 # Create your models here.
 
 class TaskPeriod(models.Model):
     period=models.CharField(max_length=16, primary_key=True)
     cron_string=models.CharField(blank=False, null=False, max_length=32)
 
-class Task(models.Model):
+class Task(TimeStampMixin):
     title = models.CharField(blank=False, null=False, max_length=100)
     due_date = models.DateField()
     note = models.CharField(blank=True, null=True, max_length=255)

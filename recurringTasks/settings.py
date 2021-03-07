@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'task_management', # ADD NEW APPS HERE (migrate after => creates local DB)
+    'contact_management',
 ]
 
 MIDDLEWARE = [
