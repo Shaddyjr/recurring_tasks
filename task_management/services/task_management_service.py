@@ -24,7 +24,7 @@ class TaskManagementService():
                     task_id = task.id,
                     status = TaskStatus.past_due
                 )
-
+  
     def parse_date(self, date):
         if not date:
             return  datetime.datetime.now().date()

@@ -109,10 +109,6 @@ def post_process(answer):
     return answer
 
 # MAIL CLI FUNCTIONS
-# TODO: add date validation & others
-# TODO: implement TCP congestion control (additive increase, multiplicative decrease = probing for bandwith) recurring tasks
-# TODO: implement RecurringContact model & RecurringContactManagementService & API & CLI
-
 def view_tasks(tasks):
     """Returns user's selection"""
     formatted_tasks = [_format_task_line(task) for task in tasks] + [Separator(),EXIT]
