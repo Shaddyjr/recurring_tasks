@@ -30,9 +30,18 @@ class ContactInteraction(TimeStampMixin):
     prev_interaction = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
-        blank=False,
-        null=False,
+        null=True,
+        blank=True,
     )
+
+    # have to override save method to set prev_interaction
+    def save(self, *args, **kwargs):
+        # get previous instance
+        prev_interactions = ContactInteraction.objects\
+            .filter(contact=self.contact)\
+            .order_by('-created_at') # set field to order by (-descending)
+        self.prev_interaction = prev_interactions[0] if prev_interactions else None
+        super().save(*args, **kwargs)
 
     @property
     def initiator(self):
