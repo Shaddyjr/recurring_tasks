@@ -1,10 +1,11 @@
 from django.db import models
+from django.utils import timezone
 from task_management.models import TaskPeriod
-from model_helpers import TimeStampMixin
 from task_management.utils import TaskPeriodTypes
+from model_helpers import TimeStampMixin
 
 YOU = 'you'
-DEFAULT_TASK_PERIOD = TaskPeriodTypes.yearly.name
+DEFAULT_TASK_PERIOD = getattr(TaskPeriodTypes.yearly,'name')
 
 class RecurringContact(TimeStampMixin):
     first_name = models.CharField(blank=False, null=False, max_length=32)
@@ -25,7 +26,7 @@ class ContactInteraction(TimeStampMixin):
         null=False,
     )
 
-    # 0 = you initiated, 1 = they initiated
+    # 0/False = you initiated, 1/True = they initiated
     direction = models.BooleanField(blank=False, null=False)
     prev_interaction = models.ForeignKey(
         'self',
@@ -49,7 +50,3 @@ class ContactInteraction(TimeStampMixin):
         if self.direction:
             return f"{self.contact.first_name} {self.contact.last_name}"
         return YOU
-
-    @property
-    def time_since_last_interaction(self):
-        return self.created_at - self.prev_interaction.created_at

@@ -1,15 +1,17 @@
 import datetime
-from task_management.models import Task, TaskPeriod, TaskStatus
 from croniter import croniter
 from dateutil.parser import parse
+from task_management.models import Task, TaskPeriod, TaskStatus
 
 class TaskManagementService():
     def __init__(self):
         self.process_tasks()
 
+    # TODO: TAKE COMPLETED TASKS INTO ACCOUNT
     def process_tasks(self):
         """
-        Syncs tasks to the moment the service is invoked (not using a cron job or server to upkeep).
+        Syncs tasks to the moment the service is invoked
+        Note: The service does not use a cron job or server to sync tasks.
         """
         today = datetime.datetime.now().date()
         past_due_tasks = self.get_live_tasks().filter(due_date__lt=today)
@@ -21,7 +23,7 @@ class TaskManagementService():
             # past due assigned status = "past_due"
             else:
                 self.update_task(
-                    task_id = task.id,
+                    task = task,
                     status = TaskStatus.past_due
                 )
   
@@ -47,16 +49,15 @@ class TaskManagementService():
     def delete_task(self, task_id):
         self.get_task(task_id).delete()
     
-    def update_task(self, task_id, **kwargs):
+    def update_task(self, task, **kwargs):
         task_fields = [
             ("title", None),
             ("due_date", self.parse_date),
             ("note", None),
-            ("period", self._get_task_period),
+            ("recurring_period", self._get_task_period),
             ("status", self._get_task_status),
         ]
 
-        task = self.get_task(task_id)
         keys = kwargs.keys()
         for task_field, func in task_fields:
             if task_field in keys:
@@ -80,15 +81,30 @@ class TaskManagementService():
             self._set_new_due_date_for_recurring(task)
         else:
             self.update_task(
-                task_id = task.id,
+                task = task,
                 status = TaskStatus.done
             )
 
+    def _date_to_datetime(self, date):
+        minutes = datetime.datetime.min.time()
+        return datetime.datetime.combine(date, minutes)
+
     def _set_new_due_date_for_recurring(self, task):
-        cron = croniter(task.recurring_period.cron_string)
-        next_due_date = cron.get_next(datetime.datetime).date()
+        today = datetime.datetime.now().date()
+        cron = croniter(
+            task.recurring_period.cron_string,
+            start_time=self._date_to_datetime(task.due_date)
+        )
+        
+        while True: # "loop-and-a-half" = do-until loop
+            next_due_date = cron.get_next(datetime.datetime).date()
+            # keep iterating until next_due_date is reasonable
+            # this takes into account the asynchronous syncing based on when app is opened
+            if today <= next_due_date:
+                break
+        
         self.update_task(
-            task_id = task.id,
+            task = task,
             due_date = next_due_date,
             status = TaskStatus.ideation,
         )

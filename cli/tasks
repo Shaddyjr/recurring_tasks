@@ -2,8 +2,7 @@
 
 from pyfiglet import Figlet
 from PyInquirer import style_from_dict, Token, prompt, Separator
-from pprint import pprint
-import os 
+import os
 import sys
 
 # This is so my local_settings.py gets loaded.
@@ -13,9 +12,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "recurringTasks.settings")
 import django
 django.setup()
 
+### APIS ###
 from task_management.apis.base import TaskManagementAPI
 from task_management.utils import TaskStatus, TaskPeriodTypes
 tm_api = TaskManagementAPI()
+
+from contact_management.apis.base import ContactManagementAPI
+cm_api = ContactManagementAPI()
 
 # Logo
 f = Figlet(font='big')
@@ -32,13 +35,14 @@ style = style_from_dict({
     Token.Question: '',
 })
 
-# CONFIG 
+### CONFIG ###
 TODAYS_TASKS  = "Get Today's Tasks"
 CREATE_TASK = "Create Task"
 VIEW_LIVE_TASKS = "View Live Tasks"
 VIEW_DONE_TASKS = "View Done Tasks"
 COMPLETE_TASK = "Complete Task"
 DELETE_TASK = "Delete Task"
+MANAGE_CONTACTS = "Manage Recurring Contacts"
 EXIT = 'Exit'
 
 MAIN_OPTIONS = [
@@ -46,6 +50,18 @@ MAIN_OPTIONS = [
     CREATE_TASK,
     VIEW_LIVE_TASKS,
     VIEW_DONE_TASKS,
+    Separator(),
+    MANAGE_CONTACTS,
+    Separator(),
+    EXIT,
+]
+
+ALL_INTERACTIONS = "All Interactions"
+CREATE_CONTACT = "Create Contact"
+
+CONTACT_OPTIONS = [
+    ALL_INTERACTIONS,
+    CREATE_CONTACT,
     Separator(),
     EXIT,
 ]
@@ -105,7 +121,7 @@ def _select_from_following(options):
 def post_process(answer):
     '''Cleans up answer for better formatting'''
     if type(answer) == str:
-        return answer.strip()
+        return ' '.join(answer.split())
     return answer
 
 # MAIL CLI FUNCTIONS
@@ -173,13 +189,12 @@ def create_task():
     task_obj = {field:post_process(answers[field]) for field, _, _ in field_options if answers[field] != NONE}
     tm_api.create_task(**task_obj)
 
-
 def update_task(task_obj):
     field_options = {
         "title": None,
         "due_date": None,
         "note": None,
-        "period": TaskPeriodTypes.labels,
+        "recurring_period": TaskPeriodTypes.labels,
         "status": TaskStatus.labels,
     }
 
@@ -229,23 +244,130 @@ def delete_task(task_id):
     if _get_confirmation():
         tm_api.delete_task(task_id)
 
+def _format_days(days):
+    if days % 365:
+        return f"{days % 365} years"
+    if days % 30:
+        return f"{days % 30} months"
+    return f"{days} days"
+
+def _responsible_party(direction):
+    return "them" if direction else "you"
+
+def _format_interaction_line(contact_interaction):
+    contact = contact_interaction.get('contact')
+    contact_name = f"{contact.get('first_name').capitalize()} {contact.get('last_name').capitalize()[0]}."
+    days_since_last_interaction = contact_interaction.get("time_since_last_interaction").days
+    formatted_days = _format_days(days_since_last_interaction)
+    interaction = contact_interaction.get('interaction')
+    responsible_party = _responsible_party(interaction.get('direction'))
+    return {
+        'name': '{:s} (waiting on {:s}) | {:s} since last interaction'.format(contact_name, responsible_party, formatted_days),
+        'value': contact.get('id'),
+    }
+
+def view_interactions():
+    contact_interactions = cm_api.get_last_interactions_by_contact()
+    options = [_format_interaction_line(contact_interaction) for contact_interaction in contact_interactions]
+    question = {
+        'type': 'list',
+        'name': 'selection',
+        'message': 'Select one of the following:',
+        'choices': options + [EXIT],
+    }
+    contact_interaction = prompt(question, style=style)['selection']
+    if contact_interaction != EXIT:
+        log_interaction(contact_interaction)
+        view_interactions()
+
+def log_interaction(contact_id):
+    question = {
+        'type': 'confirm',
+        'message': "Log recent interaction?",
+        'name': 'response',
+    }
+
+    if prompt(question, style=style)['response']:
+        cm_api.log_interaction(contact_id)
+
+def create_contact():
+    NONE = 'None'
+    field_options = [
+        ("first_name","First Name", None),
+        ("last_name","Last Name", None),
+        ("preferred_cadence","Period (Default: Yearly)", [NONE] + list(TaskPeriodTypes.labels)),
+    ]
+
+    questions = []
+    for field, message, options in field_options:
+        if options:
+            question = {
+                'type': 'list',
+                'name': field,
+                'message': f'Select one of the following for {message}:',
+                'choices': options,
+            }
+        else:
+            question = {
+                'type': 'input',
+                'name': field,
+                'message': f'Set {message}:',
+            }
+        questions.append(question)
+
+    answers = prompt(questions, style=style)
+
+    first_name = answers.get('first_name')
+    last_name = answers.get('last_name')
+    preferred_cadence = answers.get('preferred_cadence')
+    if preferred_cadence == NONE:
+        preferred_cadence = None
+    cm_api.create_contact(
+        first_name = first_name,
+        last_name = last_name,
+        preferred_cadence = preferred_cadence,
+    )
+
+
+def handle_contact_answer(answer):
+    handle_functions = {
+        ALL_INTERACTIONS: view_interactions,
+        CREATE_CONTACT: create_contact,
+    }
+
+    handle_functions[answer]()
+
+def manage_contacts():
+    question = {
+        'type': 'list',
+        'message': 'Select:',
+        'name': 'contact_selection',
+        'choices': CONTACT_OPTIONS,
+    }
+    answer = prompt(question, style=style)
+
+    if answer['contact_selection'] != EXIT:
+        handle_contact_answer(answer['contact_selection'])
+        manage_contacts()
+
 def handle_menu_answer(answer):
     handle_functions = {
         TODAYS_TASKS: get_todays_tasks,
         CREATE_TASK: create_task,
         VIEW_LIVE_TASKS: view_live_tasks,
         VIEW_DONE_TASKS: view_done_tasks,
+        MANAGE_CONTACTS: manage_contacts,
     }
 
     handle_functions[answer]()
 
 def main_menu():
     question = {
-            'type': 'list',
-            'message': 'Select:',
-            'name': 'menu_selection',
-            'choices': MAIN_OPTIONS,
-        }
+        'type': 'list',
+        'message': 'Select:',
+        'name': 'menu_selection',
+        'choices': MAIN_OPTIONS,
+    }
 
     answer = prompt(question, style=style)
 
