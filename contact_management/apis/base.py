@@ -3,7 +3,7 @@ from contact_management.services.contact_management_service import ContactMangem
 
 
 class ContactManagementAPI():
-    def _format_model_list(self, model_list: dict) -> list:
+    def _format_model_list(self, model_list: list) -> list:
         return [model_to_dict(model) for model in model_list]
 
     def get_all_contacts(self) -> list:

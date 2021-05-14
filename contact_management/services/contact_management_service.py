@@ -1,11 +1,11 @@
 from django.db.models import Max
 from django.utils import timezone
 from contact_management.models import RecurringContact, ContactInteraction
-from task_management.models import TaskPeriod
+from cadence.models import Cadence
 
 class ContactMangementService():
-    def _get_cadence(self, cadence: str) -> TaskPeriod:
-        return TaskPeriod.objects.get(period=cadence.lower())
+    def _get_cadence(self, cadence: str) -> Cadence:
+        return Cadence.objects.get(period=cadence.lower())
 
     def create_contact(
         self,

@@ -1,18 +1,14 @@
 from django.db import models
 from task_management.utils import TaskStatus
 from model_helpers import TimeStampMixin
-# Create your models here.
-
-class TaskPeriod(models.Model):
-    period=models.CharField(max_length=16, primary_key=True)
-    cron_string=models.CharField(blank=False, null=False, max_length=32)
-
+from cadence.models import Cadence
+ 
 class Task(TimeStampMixin):
     title = models.CharField(blank=False, null=False, max_length=100)
     due_date = models.DateField()
     note = models.CharField(blank=True, null=True, max_length=255)
     recurring_period = models.ForeignKey(
-        TaskPeriod,
+        Cadence,
         on_delete=models.SET_NULL,
         blank=True,
         null=True

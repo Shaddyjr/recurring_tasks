@@ -14,7 +14,7 @@ django.setup()
 
 ### APIS ###
 from task_management.apis.base import TaskManagementAPI
-from task_management.utils import TaskStatus, TaskPeriodTypes
+from task_management.utils import TaskStatus, CadenceTypes
 tm_api = TaskManagementAPI()
 
 from contact_management.apis.base import ContactManagementAPI
@@ -158,7 +158,7 @@ def create_task():
         ("title","Title", None),
         ("due_date","Due Date (Default today)", None),
         ("note","Note (OPTIONAL)", None),
-        ("period","Period (OPTIONAL)", [NONE] + list(TaskPeriodTypes.labels)),
+        ("period","Period (OPTIONAL)", [NONE] + list(CadenceTypes.labels)),
         ("status","Status", list(TaskStatus.labels)),
     ]
 
@@ -194,7 +194,7 @@ def update_task(task_obj):
         "title": None,
         "due_date": None,
         "note": None,
-        "recurring_period": TaskPeriodTypes.labels,
+        "recurring_period": CadenceTypes.labels,
         "status": TaskStatus.labels,
     }
 
@@ -295,7 +295,7 @@ def create_contact():
     field_options = [
         ("first_name","First Name", None),
         ("last_name","Last Name", None),
-        ("preferred_cadence","Period (Default: Yearly)", [NONE] + list(TaskPeriodTypes.labels)),
+        ("preferred_cadence","Cadance (Default: Yearly)", [NONE] + list(CadenceTypes.labels)),
     ]
 
     questions = []

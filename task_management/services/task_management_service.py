@@ -1,7 +1,7 @@
 import datetime
 from croniter import croniter
 from dateutil.parser import parse
-from task_management.models import Task, TaskPeriod, TaskStatus
+from task_management.models import Task, Cadence, TaskStatus
 
 class TaskManagementService():
     def __init__(self):
@@ -69,7 +69,7 @@ class TaskManagementService():
 
     def _get_task_period(self, period):
         if period is not None:
-            return TaskPeriod.objects.get(period=period.lower())
+            return Cadence.objects.get(period=period.lower())
 
     def _get_task_status(self, status):
         return getattr(TaskStatus, status.lower())

@@ -1,21 +1,18 @@
 from django.db import models
 from django.utils import timezone
-from task_management.models import TaskPeriod
-from task_management.utils import TaskPeriodTypes
+from cadence.models import Cadence
 from model_helpers import TimeStampMixin
 
 YOU = 'you'
-DEFAULT_TASK_PERIOD = getattr(TaskPeriodTypes.yearly,'name')
 
 class RecurringContact(TimeStampMixin):
     first_name = models.CharField(blank=False, null=False, max_length=32)
     last_name = models.CharField(blank=False, null=False, max_length=32)
     preferred_cadence = models.ForeignKey(
-        TaskPeriod,
+        Cadence,
         on_delete=models.PROTECT,
         blank=True,
         null=True,
-        default=DEFAULT_TASK_PERIOD,
     )
 
 class ContactInteraction(TimeStampMixin):
