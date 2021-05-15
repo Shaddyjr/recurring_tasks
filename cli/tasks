@@ -14,11 +14,14 @@ django.setup()
 
 ### APIS ###
 from task_management.apis.base import TaskManagementAPI
-from task_management.utils import TaskStatus, CadenceTypes
+from task_management.utils import TaskStatus
 tm_api = TaskManagementAPI()
 
 from contact_management.apis.base import ContactManagementAPI
 cm_api = ContactManagementAPI()
+
+from cadence.apis.base import CadenceAPI
+cad_api = CadenceAPI()
 
 # Logo
 f = Figlet(font='big')
@@ -152,13 +155,16 @@ def view_done_tasks():
     while view_tasks(tm_api.get_done_tasks()) != EXIT:
         continue
 
+def get_cadences():
+    return [cadence_obj.get("period") for cadence_obj in cad_api.get_all_cadences()]
+
 def create_task():
     NONE = 'None'
     field_options = [
         ("title","Title", None),
         ("due_date","Due Date (Default today)", None),
         ("note","Note (OPTIONAL)", None),
-        ("period","Period (OPTIONAL)", [NONE] + list(CadenceTypes.labels)),
+        ("period","Period (OPTIONAL)", [NONE] + list(get_cadences())),
         ("status","Status", list(TaskStatus.labels)),
     ]
 
@@ -194,7 +200,7 @@ def update_task(task_obj):
         "title": None,
         "due_date": None,
         "note": None,
-        "recurring_period": CadenceTypes.labels,
+        "recurring_period": get_cadences(),
         "status": TaskStatus.labels,
     }
 
@@ -295,7 +301,7 @@ def create_contact():
     field_options = [
         ("first_name","First Name", None),
         ("last_name","Last Name", None),
-        ("preferred_cadence","Cadance (Default: Yearly)", [NONE] + list(CadenceTypes.labels)),
+        ("preferred_cadence","Cadance (Default: Yearly)", [NONE] + list(get_cadences())),
     ]
 
     questions = []

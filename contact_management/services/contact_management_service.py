@@ -1,12 +1,9 @@
 from django.db.models import Max
 from django.utils import timezone
 from contact_management.models import RecurringContact, ContactInteraction
-from cadence.models import Cadence
+from util import get_cadence_by_period
 
 class ContactMangementService():
-    def _get_cadence(self, cadence: str) -> Cadence:
-        return Cadence.objects.get(period=cadence.lower())
-
     def create_contact(
         self,
         first_name: str,
@@ -22,7 +19,7 @@ class ContactMangementService():
             last_name = last_name,
         )
         if preferred_cadence:
-            contact.preferred_cadence = self._get_cadence(preferred_cadence)
+            contact.preferred_cadence = get_cadence_by_period(preferred_cadence.lower())
         contact.save()
         self.log_interaction(contact.id)
 

@@ -1,13 +1,13 @@
 import datetime
 from croniter import croniter
 from dateutil.parser import parse
-from task_management.models import Task, Cadence, TaskStatus
+from task_management.models import Task, TaskStatus
+from util import get_cadence_by_period
 
 class TaskManagementService():
     def __init__(self):
         self.process_tasks()
 
-    # TODO: TAKE COMPLETED TASKS INTO ACCOUNT
     def process_tasks(self):
         """
         Syncs tasks to the moment the service is invoked
@@ -39,7 +39,7 @@ class TaskManagementService():
             title = title,
             due_date = self.parse_date(due_date),
             note = note,
-            recurring_period = self._get_task_period(period),
+            recurring_period = self._get_cadence_by_period(period),
             status = self._get_task_status(status),
         )
 
@@ -54,7 +54,7 @@ class TaskManagementService():
             ("title", None),
             ("due_date", self.parse_date),
             ("note", None),
-            ("recurring_period", self._get_task_period),
+            ("recurring_period", self._get_cadence_by_period),
             ("status", self._get_task_status),
         ]
 
@@ -67,9 +67,9 @@ class TaskManagementService():
                 setattr(task, task_field, val)
         task.save()
 
-    def _get_task_period(self, period):
+    def _get_cadence_by_period(self, period):
         if period is not None:
-            return Cadence.objects.get(period=period.lower())
+            return get_cadence_by_period(period.lower())
 
     def _get_task_status(self, status):
         return getattr(TaskStatus, status.lower())
